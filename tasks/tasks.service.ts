@@ -34,6 +34,8 @@ export class TasksService {
       title?: string;
       from?: string;
       to?: string;
+      page?: number;
+      pageSize?: number;
     },
   ): Promise<Task[]> {
     const query: Record<string, any> = { user: new Types.ObjectId(userId) };
@@ -60,7 +62,13 @@ export class TasksService {
       query.dueDate = dateQuery;
     }
 
-    return this.taskModel.find(query).exec();
+    // Pagination
+    const page = filters?.page && filters.page > 0 ? filters.page : 1;
+    const pageSize =
+      filters?.pageSize && filters.pageSize > 0 ? filters.pageSize : 100;
+    const skip = (page - 1) * pageSize;
+
+    return this.taskModel.find(query).skip(skip).limit(pageSize).exec();
   }
 
   async findOne(id: string, userId: string): Promise<Task> {
@@ -134,13 +142,17 @@ export class TasksService {
       .exec();
   }
 
-  async getTasksGroupedByStatus(userId: string): Promise<{
+  async getTasksGroupedByStatus(
+    userId: string,
+    pageSize: number = 100,
+  ): Promise<{
     TODO: Task[];
     IN_PROGRESS: Task[];
     DONE: Task[];
   }> {
     const tasks = await this.taskModel
       .find({ user: new Types.ObjectId(userId) })
+      .limit(pageSize)
       .exec();
 
     return {
